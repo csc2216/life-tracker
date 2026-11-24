@@ -1,0 +1,252 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Noto Sans TC', system-ui, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px; /* prevent iOS zoom on focus */
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ────────────────────────── Themes ──────────────────────────
+ * Every Tailwind colour/radius utility reads a CSS variable
+ * (bg-slate-100 → var(--color-slate-100)), so a theme re-skins the app by
+ * remapping the neutral (slate) and accent (sky) ramps. Status colours
+ * (emerald/amber/red/indigo) are never remapped.
+ *
+ * Things utilities can't reach are driven by --ui-* variables consumed by
+ * hook classes (.ui-card, .ui-tile, .ui-hp, .ui-page, .ui-lifted).
+ * Everything is a *variable*, never a descendant selector, so a nested
+ * [data-theme] (the previews in Settings) renders its own theme correctly.
+ * These rules are unlayered, so they win over Tailwind's utilities.
+ */
+
+/* ── Clean (default). Declared explicitly so nested previews reset to it. ── */
+:root,
+[data-theme='clean'] {
+  --color-white: #fff;
+  --color-slate-50: oklch(98.4% 0.003 247.858);
+  --color-slate-100: oklch(96.8% 0.007 247.896);
+  --color-slate-200: oklch(92.9% 0.013 255.508);
+  --color-slate-300: oklch(86.9% 0.022 252.894);
+  --color-slate-400: oklch(70.4% 0.04 256.788);
+  --color-slate-500: oklch(55.4% 0.046 257.417);
+  --color-slate-600: oklch(44.6% 0.043 257.281);
+  --color-slate-700: oklch(37.2% 0.044 257.287);
+  --color-slate-800: oklch(27.9% 0.041 260.031);
+  --color-slate-900: oklch(20.8% 0.042 265.755);
+  --color-slate-950: oklch(12.9% 0.042 264.695);
+  --color-sky-50: oklch(97.7% 0.013 236.62);
+  --color-sky-100: oklch(95.1% 0.026 236.824);
+  --color-sky-300: oklch(82.8% 0.111 230.318);
+  --color-sky-400: oklch(74.6% 0.16 232.661);
+  --color-sky-500: oklch(68.5% 0.169 237.323);
+  --color-sky-600: oklch(58.8% 0.158 241.966);
+  --color-sky-700: oklch(50% 0.134 242.749);
+  --color-sky-900: oklch(39.1% 0.09 240.876);
+  --color-sky-950: oklch(29.3% 0.066 243.157);
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --ui-shadow-sm: 0 1px 3px 0 #0000001a, 0 1px 2px -1px #0000001a;
+  --ui-card-bg: var(--color-white);
+  --ui-card-border: 0 solid transparent;
+  --ui-card-shadow: var(--ui-shadow-sm);
+  --ui-card-blur: none;
+  --ui-lift-shadow: 0 25px 50px -12px #00000040;
+  --ui-tile-border: 0 solid transparent;
+  --ui-tile-shadow: var(--ui-shadow-sm);
+  --ui-tile-press: var(--ui-shadow-sm);
+  --ui-tile-shift: none;
+  --ui-hp-border: 0 solid transparent;
+  --ui-hp-radius: 9999px;
+  --ui-hp-ticks: none;
+  --ui-page: var(--color-slate-100);
+  --ui-heading-font: inherit;
+  --ui-heading-mark: '';
+}
+@media (prefers-color-scheme: dark) {
+  :root,
+  [data-theme='clean'] {
+    --ui-card-bg: var(--color-slate-900);
+    --ui-page: var(--color-slate-950);
+  }
+}
+
+/* ── RPG: parchment by day, dungeon by night; hard edges, segmented HP ── */
+[data-theme='rpg'] {
+  --color-white: #fffaf0;
+  --color-slate-50: #fbf5e6;
+  --color-slate-100: #f2e8d0;
+  --color-slate-200: #e6d6b3;
+  --color-slate-300: #d2bd8f;
+  --color-slate-400: #a8946b;
+  --color-slate-500: #7d6c4d;
+  --color-slate-600: #5e5038;
+  --color-slate-700: #3d3552;
+  --color-slate-800: #2b2541;
+  --color-slate-900: #1e1a31;
+  --color-slate-950: #130f21;
+  --color-sky-50: #fbf1e1;
+  --color-sky-100: #f5dfbd;
+  --color-sky-300: #e0a95f;
+  --color-sky-400: #d89445;
+  --color-sky-500: #a85a17;
+  --color-sky-600: #8f4b14;
+  --color-sky-700: #743c12;
+  --color-sky-900: #4a2a12;
+  --color-sky-950: #2e1a0c;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
+
+  --ui-edge: #3a2c1c;
+  --ui-card-bg: var(--color-white);
+  --ui-card-border: 2px solid var(--ui-edge);
+  --ui-card-shadow: 3px 3px 0 var(--ui-edge);
+  --ui-card-blur: none;
+  --ui-lift-shadow: 7px 7px 0 var(--ui-edge);
+  --ui-tile-border: 2px solid var(--ui-edge);
+  --ui-tile-shadow: 3px 3px 0 var(--ui-edge);
+  --ui-tile-press: 1px 1px 0 var(--ui-edge);
+  --ui-tile-shift: translate(2px, 2px);
+  --ui-hp-border: 2px solid var(--ui-edge);
+  --ui-hp-radius: 2px;
+  --ui-hp-ticks: repeating-linear-gradient(to right, transparent 0 calc(10% - 2px), rgb(0 0 0 / 0.22) calc(10% - 2px) 10%);
+  --ui-page: var(--color-slate-100);
+  --ui-heading-font: ui-monospace, 'SF Mono', Menlo, monospace, 'PingFang TC', 'Noto Sans TC', sans-serif;
+  --ui-heading-mark: '▸ ';
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme='rpg'] {
+    --ui-edge: #8a7448;
+    --ui-card-bg: var(--color-slate-900);
+    --ui-page: var(--color-slate-950);
+  }
+}
+
+/* ── Soft: pastel gradient, frosted glass, big radii ── */
+[data-theme='soft'] {
+  --color-white: #fff;
+  --color-slate-50: #faf7fc;
+  --color-slate-100: #f3eef8;
+  --color-slate-200: #e7e0f0;
+  --color-slate-300: #d3c9e2;
+  --color-slate-400: #a99cc0;
+  --color-slate-500: #776b90;
+  --color-slate-600: #5f5577;
+  --color-slate-700: #433b58;
+  --color-slate-800: #2f2943;
+  --color-slate-900: #221d33;
+  --color-slate-950: #171326;
+  --color-sky-50: #f7f0fe;
+  --color-sky-100: #eee0fd;
+  --color-sky-300: #c9a6f7;
+  --color-sky-400: #b892f5;
+  --color-sky-500: #8b5ce6;
+  --color-sky-600: #7445d4;
+  --color-sky-700: #6435b5;
+  --color-sky-900: #3b1f6b;
+  --color-sky-950: #241145;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --ui-glow: 0 10px 30px -12px rgb(120 70 170 / 0.35);
+  --ui-card-bg: rgb(255 255 255 / 0.6);
+  --ui-card-border: 1px solid rgb(255 255 255 / 0.75);
+  --ui-card-shadow: var(--ui-glow);
+  --ui-card-blur: blur(18px) saturate(1.4);
+  --ui-lift-shadow: 0 24px 50px -16px rgb(120 70 170 / 0.55);
+  --ui-tile-border: 0 solid transparent;
+  --ui-tile-shadow: var(--ui-glow);
+  --ui-tile-press: var(--ui-glow);
+  --ui-tile-shift: none;
+  --ui-hp-border: 0 solid transparent;
+  --ui-hp-radius: 9999px;
+  --ui-hp-ticks: none;
+  --ui-page: linear-gradient(165deg, #fde4f1 0%, #ece3fd 45%, #dcedfd 100%);
+  --ui-heading-font: inherit;
+  --ui-heading-mark: '';
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme='soft'] {
+    --ui-glow: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+    --ui-card-bg: rgb(44 36 70 / 0.55);
+    --ui-card-border: 1px solid rgb(255 255 255 / 0.08);
+    --ui-page: linear-gradient(165deg, #2b1636 0%, #1b1838 50%, #0f1d34 100%);
+  }
+}
+
+/* ── Hooks ── */
+body,
+.ui-page {
+  background: var(--ui-page);
+  background-attachment: fixed;
+}
+.ui-card {
+  background-color: var(--ui-card-bg);
+  border: var(--ui-card-border);
+  box-shadow: var(--ui-card-shadow);
+  -webkit-backdrop-filter: var(--ui-card-blur);
+  backdrop-filter: var(--ui-card-blur);
+}
+.ui-card.ui-lifted {
+  box-shadow: var(--ui-lift-shadow);
+}
+.ui-tile {
+  border: var(--ui-tile-border);
+  box-shadow: var(--ui-tile-shadow);
+}
+.ui-tile:active {
+  transform: var(--ui-tile-shift);
+  box-shadow: var(--ui-tile-press);
+}
+.ui-hp {
+  border: var(--ui-hp-border);
+}
+.ui-hp,
+.ui-hp > * {
+  border-radius: var(--ui-hp-radius);
+}
+.ui-hp::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--ui-hp-ticks);
+}
+h1 {
+  font-family: var(--ui-heading-font);
+  letter-spacing: var(--ui-heading-spacing, normal);
+}
+[data-theme='rpg'] h1 {
+  --ui-heading-spacing: 0.08em;
+}
+h1::before {
+  content: var(--ui-heading-mark);
+  color: var(--color-sky-500);
+}
