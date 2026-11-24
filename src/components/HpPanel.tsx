@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSettings } from '../db/db';
-import { computeExerciseHp, computeSleepHp, dailyExercise, dailySleep, formatHours, formatOnset } from '../lib/hp';
+import { computeExerciseHp, computeSleepHp, dailyExercise, dailySleep, formatHours, formatOnset, hpLevel, type HpLevel } from '../lib/hp';
 import type { PairingResult } from '../lib/pairing';
 import { formatDuration, MINUTE } from '../lib/time';
 import DayBars from './DayBars';
@@ -9,11 +9,19 @@ import HpBar from './HpBar';
 const fmtMin = (m: number) => formatDuration(m * MINUTE);
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-function Row({ k, v }: { k: string; v: string }) {
+const DOT: Record<HpLevel, string> = { good: 'bg-emerald-500', warn: 'bg-amber-400', bad: 'bg-red-500' };
+
+function Row({ k, sub, v, level }: { k: string; sub?: string; v: string; level?: HpLevel }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-slate-500">{k}</span>
-      <span className="tabular-nums">{v}</span>
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="text-slate-500">
+        {k}
+        {sub && <span className="block text-xs text-slate-400">{sub}</span>}
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
+        {level && <span className={`h-2 w-2 rounded-full ${DOT[level]}`} aria-hidden />}
+        {v}
+      </span>
     </div>
   );
 }
@@ -47,10 +55,11 @@ export default function HpPanel({ pairing, now }: { pairing: PairingResult; now:
         />
         <div className="mt-4 space-y-1">
           <Row k="有紀錄的天數" v={`${sleep.days} / 7`} />
-          <Row k="時數分數 sigmoid(平均 − 5)" v={pct(sleep.durationScore)} />
+          <Row k="時數分數 ×0.7" sub="sigmoid(0.6 × (平均 − 5.8))" v={pct(sleep.durationScore)} level={sleep.days ? hpLevel(sleep.durationScore) : undefined} />
           <Row k="主睡眠平均入睡" v={sleep.avgOnset === undefined ? '—' : formatOnset(sleep.avgOnset)} />
           <Row
-            k={`規律分數（標準差 ÷ ${s.sleepStdDevMinutes} 分）`}
+            k="規律分數 ×0.3"
+            sub={`1 − 標準差 ÷ ${s.sleepStdDevMinutes} 分`}
             v={sleep.regularity === undefined ? '需 2 天以上' : `±${Math.round(sleep.sdMinutes!)} 分 → ${pct(sleep.regularity)}`}
           />
         </div>

@@ -24,18 +24,23 @@ export default function DayBars({ data, target, targetLabel, format, barClass, n
 
   return (
     <div>
-      <p className="mb-2 text-sm">
-        <span className="text-slate-500">{dayLabel(selected.key, now)}　</span>
-        <span className="font-semibold tabular-nums">{selected.minutes > 0 ? format(selected.minutes) : '沒有紀錄'}</span>
-        {selected.detail && <span className="text-slate-500">　{selected.detail}</span>}
-      </p>
+      <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
+        <p className="min-w-0">
+          <span className="text-slate-500">{dayLabel(selected.key, now)}　</span>
+          <span className="font-semibold tabular-nums">{selected.minutes > 0 ? format(selected.minutes) : '沒有紀錄'}</span>
+          {selected.detail && <span className="text-slate-500">　{selected.detail}</span>}
+        </p>
+        {/* legend for the dashed target line, kept outside the plot so bars never hide it */}
+        <span className="flex shrink-0 items-center gap-1 text-[11px] text-slate-500">
+          <span className="w-4 border-t border-dashed border-slate-400 dark:border-slate-500" aria-hidden />
+          {targetLabel}
+        </span>
+      </div>
       <div className="relative" style={{ height: CHART_H }}>
         <div
-          className="pointer-events-none absolute inset-x-0 border-t border-dashed border-slate-400 dark:border-slate-500"
+          className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-slate-400 dark:border-slate-500"
           style={{ bottom: y(target) }}
-        >
-          <span className="absolute -top-4 right-0 text-[10px] text-slate-500">{targetLabel}</span>
-        </div>
+        />
         <div className="absolute inset-0 flex items-end justify-between border-b border-slate-200 dark:border-slate-700">
           {data.map((d, i) => (
             <button

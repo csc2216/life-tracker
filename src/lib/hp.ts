@@ -1,8 +1,11 @@
 /*
  * HP calculations (pure). Rolling 7-day window ending at `now`.
  *
- * Sleep HP = 0.5 × sigmoid(avgSleepHours − 5) + 0.5 × regularity
- *   sigmoid(x) = 1 / (1 + e^−x): 4h→27%, 5h→50%, 6h→73%, 7h→88%, 8h→95%.
+ * Sleep HP = 0.7 × duration + 0.3 × regularity
+ *   duration = sigmoid(0.6 × (avgSleepHours − 5.8)), tuned so the hours alone
+ *   land in the HP colour bands: 3–4h red (<30%), 5–6h yellow, 7–9h green (>60%).
+ *   3h 16% · 4h 25% · 5h 38% · 6h 53% · 7h 67% · 8h 79% · 9h 87%
+ *   (band edges: 30% at 4.39h, 60% at 6.48h).
  *   (Settings.sleepTargetHours only draws the chart's target line.)
  *   A "sleep day" is the day you woke up, with the day boundary at 18:00:
  *   waking before 18:00 counts for that day, after 18:00 for the next day.
@@ -30,7 +33,11 @@ export const ONGOING_EXERCISE_CAP = 4 * HOUR;
 type Targets = Pick<Settings, 'sleepStdDevMinutes' | 'exerciseTargetHours'>;
 
 /** Hours at which the sleep-duration score is 50%. */
-export const SLEEP_MIDPOINT_HOURS = 5;
+export const SLEEP_MIDPOINT_HOURS = 5.8;
+/** How quickly the duration score rises per hour around the midpoint. */
+export const SLEEP_SCORE_STEEPNESS = 0.6;
+/** Share of sleep HP from duration; the rest is bedtime regularity. */
+export const SLEEP_DURATION_WEIGHT = 0.7;
 export const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
 const DAY_MIN = 24 * 60;
@@ -106,13 +113,13 @@ export function computeSleepHp(segments: Segment[], now: number, t: Targets): Sl
   if (days.length === 0) return { hp: 0, days: 0, avgHours: 0, durationScore: 0 };
 
   const avgHours = days.reduce((a, n) => a + n.minutes, 0) / days.length / 60;
-  const durationScore = sigmoid(avgHours - SLEEP_MIDPOINT_HOURS);
+  const durationScore = sigmoid(SLEEP_SCORE_STEEPNESS * (avgHours - SLEEP_MIDPOINT_HOURS));
   const { mean, sd } = circularStats(days.map((d) => clockMinutes(d.mainStart)));
   if (days.length < 2) return { hp: durationScore, days: 1, avgHours, durationScore, avgOnset: mean };
 
   const regularity = Math.max(0, 1 - sd / t.sleepStdDevMinutes);
   return {
-    hp: 0.5 * durationScore + 0.5 * regularity,
+    hp: SLEEP_DURATION_WEIGHT * durationScore + (1 - SLEEP_DURATION_WEIGHT) * regularity,
     days: days.length,
     avgHours,
     durationScore,

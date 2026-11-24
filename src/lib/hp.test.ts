@@ -58,20 +58,40 @@ describe('computeSleepHp', () => {
     expect(computeSleepHp([], NOW, T).hp).toBe(0);
   });
 
-  it('duration score is sigmoid(hours − 5)', () => {
-    const score = (h: number) => computeSleepHp([sleep(at(24, 1), h)], NOW, T).durationScore;
-    expect(score(4)).toBeCloseTo(0.269, 3);
-    expect(score(5)).toBeCloseTo(0.5, 5);
-    expect(score(6)).toBeCloseTo(0.731, 3);
-    expect(score(7)).toBeCloseTo(0.881, 3);
-    expect(score(8)).toBeCloseTo(0.953, 3);
+  const score = (h: number) => computeSleepHp([sleep(at(24, 1), h)], NOW, T).durationScore;
+
+  it('duration score is sigmoid(0.6·(hours − 5.8))', () => {
+    expect(score(5.8)).toBeCloseTo(0.5, 6);
+    expect(score(3)).toBeCloseTo(0.157, 3);
+    expect(score(4)).toBeCloseTo(0.254, 3);
+    expect(score(5)).toBeCloseTo(0.382, 3);
+    expect(score(6)).toBeCloseTo(0.530, 3);
+    expect(score(7)).toBeCloseTo(0.673, 3);
+    expect(score(8)).toBeCloseTo(0.789, 3);
+    expect(score(9)).toBeCloseTo(0.872, 3);
   });
 
-  it('7.5h every night at the same time: 0.5·sigmoid(2.5) + 0.5', () => {
-    const segs = [17, 18, 19, 20, 21, 22, 23].map((d) => sleep(at(d, 23), 7.5));
-    const r = computeSleepHp(segs, NOW, T);
+  it('hours alone fall in the colour bands: 3–4h red, 5–6h yellow, 7–9h green', () => {
+    const bands = [3, 4, 5, 6, 7, 8, 9].map((h) => hpLevel(score(h)));
+    expect(bands).toEqual(['bad', 'bad', 'warn', 'warn', 'good', 'good', 'good']);
+  });
+
+  it('band edges sit between whole hours (30% ≈ 4.39h, 60% ≈ 6.48h)', () => {
+    expect(score(4.38)).toBeLessThan(0.3);
+    expect(score(4.4)).toBeGreaterThan(0.3);
+    expect(score(6.47)).toBeLessThan(0.6);
+    expect(score(6.49)).toBeGreaterThan(0.6);
+  });
+
+  it('weights: 0.7 duration + 0.3 regularity', () => {
+    const regular = [17, 18, 19, 20, 21, 22, 23].map((d) => sleep(at(d, 23), 7.5));
+    const r = computeSleepHp(regular, NOW, T);
     expect(r.regularity).toBeCloseTo(1);
-    expect(r.hp).toBeCloseTo(0.5 * sigmoid(2.5) + 0.5, 6);
+    expect(r.hp).toBeCloseTo(0.7 * sigmoid(0.6 * 1.7) + 0.3, 6);
+    const chaotic = [sleep(at(21, 3), 7), sleep(at(22, 15), 7), sleep(at(23, 3), 7), sleep(at(24, 15), 7)];
+    const c = computeSleepHp(chaotic, at(25, 12), T);
+    expect(c.regularity).toBe(0);
+    expect(c.hp).toBeCloseTo(0.7 * c.durationScore, 6);
   });
 
   it('a consistently late schedule (03:00→10:30) is still fully regular', () => {
@@ -79,7 +99,7 @@ describe('computeSleepHp', () => {
     const r = computeSleepHp(segs, NOW, T);
     expect(r.days).toBe(7);
     expect(r.regularity).toBeCloseTo(1);
-    expect(r.hp).toBeCloseTo(0.5 * sigmoid(2.5) + 0.5, 6);
+    expect(r.hp).toBeCloseTo(0.7 * sigmoid(0.6 * 1.7) + 0.3, 6);
   });
 
   it('23:00 vs 01:00 onsets are 1 h SD, not 11 h', () => {
@@ -95,7 +115,7 @@ describe('computeSleepHp', () => {
   it('uses only the duration score with a single sleep day', () => {
     const r = computeSleepHp([sleep(at(24, 3), 11)], NOW, T);
     expect(r.regularity).toBeUndefined();
-    expect(r.hp).toBeCloseTo(sigmoid(6), 6);
+    expect(r.hp).toBeCloseTo(sigmoid(0.6 * (11 - 5.8)), 6);
   });
 
   it('ignores sleeps outside the 7-day window', () => {
