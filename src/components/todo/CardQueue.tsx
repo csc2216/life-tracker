@@ -14,27 +14,37 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useState } from 'react';
-import { mergeIntoProject, setColumnOrder } from '../../db/cardOps';
+import { mergeIntoProject, reorderTasks, setColumnOrder } from '../../db/cardOps';
 import type { Card } from '../../db/types';
 import CardItem from './CardItem';
-import CardView from './CardView';
+import CardView, { TaskRowView } from './CardView';
 
-/** Single cards dragged over a project's task area merge into it; otherwise sort. */
+/**
+ * Route collisions by what is being dragged:
+ * - a sub-task only sorts among the other sub-tasks of its own project;
+ * - a single card merges when over a project's task area, otherwise sorts among cards;
+ * - a project only sorts among cards.
+ */
 const collision: CollisionDetection = (args) => {
-  const active = args.active.data.current?.card as Card | undefined;
-  const isInto = (id: unknown) => String(id).startsWith('into:');
-  if (active?.kind === 'single') {
-    const hits = pointerWithin({ ...args, droppableContainers: args.droppableContainers.filter((c) => isInto(c.id)) });
+  const data = args.active.data.current;
+  const all = args.droppableContainers;
+  if (data?.type === 'task') {
+    const siblings = all.filter((c) => c.data.current?.type === 'task' && c.data.current.projectId === data.projectId);
+    return closestCenter({ ...args, droppableContainers: siblings });
+  }
+  const cards = all.filter((c) => c.data.current?.type === 'card');
+  if ((data?.card as Card | undefined)?.kind === 'single') {
+    const hits = pointerWithin({ ...args, droppableContainers: all.filter((c) => String(c.id).startsWith('into:')) });
     if (hits.length) return hits;
   }
-  return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((c) => !isInto(c.id)) });
+  return closestCenter({ ...args, droppableContainers: cards });
 };
 
 /** Ignore the click that some browsers fire right after a drag ends. */
 let lastDragEnd = 0;
 
 function SortableCard({ card, today, onOpen, onCompleted }: { card: Card; today: string; onOpen: () => void; onCompleted: (title: string, undoId: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id, data: { card } });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id, data: { type: 'card', card } });
   return (
     <div
       ref={setNodeRef}
@@ -46,6 +56,7 @@ function SortableCard({ card, today, onOpen, onCompleted }: { card: Card; today:
         card={card}
         today={today}
         dropZone={card.kind === 'project'}
+        sortableTasks={card.kind === 'project'}
         onOpen={() => Date.now() - lastDragEnd > 250 && onOpen()}
         onCompleted={onCompleted}
       />
@@ -76,19 +87,36 @@ export default function CardQueue({ cards, today, onOpen, onCompleted, onMerged,
   const ids = optimistic ?? cards.map((c) => c.id);
   const ordered = ids.map((id) => byId.get(id)).filter((c): c is Card => !!c);
   const active = activeId ? byId.get(activeId) : undefined;
+  const [activeTask, setActiveTask] = useState<{ task: Card['tasks'][number] } | null>(null);
 
   const onDragStart = (e: DragStartEvent) => {
-    setActiveId(String(e.active.id));
+    const d = e.active.data.current;
+    if (d?.type === 'task') setActiveTask({ task: d.task });
+    else setActiveId(String(e.active.id));
     onDraggingChange(true);
     navigator.vibrate?.(10);
   };
 
   const onDragEnd = async (e: DragEndEvent) => {
     setActiveId(null);
+    setActiveTask(null);
     lastDragEnd = Date.now();
     setTimeout(() => onDraggingChange(false), 50);
     const overId = e.over ? String(e.over.id) : null;
     if (!overId || overId === e.active.id) return;
+    const d = e.active.data.current;
+    if (d?.type === 'task') {
+      // Move within the project's full task list, so folded (+N) tasks keep their places.
+      const project = byId.get(d.projectId as string);
+      const over = e.over?.data.current;
+      if (!project || over?.type !== 'task') return;
+      const ids = project.tasks.map((t) => t.id);
+      const from = ids.indexOf(d.task.id);
+      const to = ids.indexOf(over.task.id);
+      if (from < 0 || to < 0) return;
+      await reorderTasks(project.id, arrayMove(ids, from, to));
+      return;
+    }
     if (overId.startsWith('into:')) {
       const projectId = overId.slice(5);
       const single = byId.get(String(e.active.id));
@@ -117,6 +145,7 @@ export default function CardQueue({ cards, today, onOpen, onCompleted, onMerged,
       onDragEnd={(e) => void onDragEnd(e)}
       onDragCancel={() => {
         setActiveId(null);
+        setActiveTask(null);
         onDraggingChange(false);
       }}
     >
@@ -127,6 +156,7 @@ export default function CardQueue({ cards, today, onOpen, onCompleted, onMerged,
       </SortableContext>
       <DragOverlay dropAnimation={{ duration: 180, easing: 'ease-out' }}>
         {active && <CardView card={active} today={today} lifted />}
+        {activeTask && <TaskRowView task={activeTask.task} ticked={activeTask.task.done} today={today} lifted />}
       </DragOverlay>
     </DndContext>
   );

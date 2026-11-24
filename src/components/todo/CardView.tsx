@@ -1,4 +1,6 @@
 import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useState, type ReactNode } from 'react';
 import type { Card, Task } from '../../db/types';
 import { isProjectComplete, progress, visibleTasks } from '../../lib/cards';
@@ -16,6 +18,8 @@ interface Props {
   tasksOverride?: Task[];
   /** register the task area as a drop zone for merging single cards */
   dropZone?: boolean;
+  /** make sub-tasks drag-sortable (queue view only; needs the surrounding DndContext) */
+  sortableTasks?: boolean;
   lifted?: boolean;
   onOpen?: () => void;
   onToggleSingle?: () => void;
@@ -43,12 +47,42 @@ function Check({ checked, onClick, label, size = 'md' }: { checked: boolean; onC
   );
 }
 
+/** dnd-kit id for a sub-task row (prefixed so it can't clash with card ids). */
+export const taskDndId = (taskId: string) => `task:${taskId}`;
+
+export function TaskRowView({ task, ticked, today, lifted, onToggle }: { task: Task; ticked: boolean; today: string; lifted?: boolean; onToggle?: () => void }) {
+  return (
+    <div
+      className={`flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 select-none [-webkit-touch-callout:none] dark:border-slate-700 dark:bg-slate-900 ${
+        lifted ? 'ui-card ui-lifted scale-[1.03] shadow-xl' : ''
+      }`}
+    >
+      <Check size="sm" checked={ticked} onClick={onToggle} label={`完成 ${task.title}`} />
+      <span className={`min-w-0 flex-1 break-words text-sm ${ticked ? 'text-slate-400 line-through' : ''}`}>{task.title}</span>
+      {task.due && <DueChip due={task.due} today={today} done={ticked} />}
+    </div>
+  );
+}
+
+/** Long-pressing a sub-task drags just the sub-task; dnd-kit lets the innermost draggable claim the press. */
+function SortableTaskRow({ projectId, task, ...rest }: { projectId: string; task: Task; ticked: boolean; today: string; onToggle?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: taskDndId(task.id),
+    data: { type: 'task', projectId, task },
+  });
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }} {...attributes} {...listeners} role="listitem">
+      <TaskRowView task={task} {...rest} />
+    </div>
+  );
+}
+
 function DropZone({ id, disabled, children }: { id: string; disabled: boolean; children: (isOver: boolean) => ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `into:${id}`, disabled });
   return <div ref={setNodeRef}>{children(isOver)}</div>;
 }
 
-export default function CardView({ card, today, completing, pendingTasks, tasksOverride, dropZone, lifted, onOpen, onToggleSingle, onToggleTask }: Props) {
+export default function CardView({ card, today, completing, pendingTasks, tasksOverride, dropZone, sortableTasks, lifted, onOpen, onToggleSingle, onToggleTask }: Props) {
   const [expanded, setExpanded] = useState(false);
   const finished = useFinished(card.id);
   const inDone = card.column === 'done';
@@ -85,16 +119,24 @@ export default function CardView({ card, today, completing, pendingTasks, tasksO
 
   const taskList = (isOver: boolean) => (
     <div className={`mt-3 space-y-1.5 rounded-xl transition-colors ${isOver ? 'bg-sky-50 ring-2 ring-sky-400 dark:bg-sky-950' : ''}`}>
-      {view.shown.map((t) => {
-        const ticked = t.done || !!pendingTasks?.has(t.id);
-        return (
-          <div key={t.id} className="flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700">
-            <Check size="sm" checked={ticked} onClick={() => onToggleTask?.(t.id)} label={`完成 ${t.title}`} />
-            <span className={`min-w-0 flex-1 break-words text-sm ${ticked ? 'text-slate-400 line-through' : ''}`}>{t.title}</span>
-            {t.due && <DueChip due={t.due} today={today} done={ticked} />}
-          </div>
-        );
-      })}
+      {sortableTasks ? (
+        <SortableContext items={view.shown.map((t) => taskDndId(t.id))} strategy={verticalListSortingStrategy}>
+          {view.shown.map((t) => (
+            <SortableTaskRow
+              key={t.id}
+              projectId={card.id}
+              task={t}
+              ticked={t.done || !!pendingTasks?.has(t.id)}
+              today={today}
+              onToggle={() => onToggleTask?.(t.id)}
+            />
+          ))}
+        </SortableContext>
+      ) : (
+        view.shown.map((t) => (
+          <TaskRowView key={t.id} task={t} ticked={t.done || !!pendingTasks?.has(t.id)} today={today} onToggle={() => onToggleTask?.(t.id)} />
+        ))
+      )}
       {card.tasks.length === 0 &&
         (finished > 0 ? (
           <p className="px-1 py-1 text-sm text-emerald-600 dark:text-emerald-400">小任務都完成了</p>

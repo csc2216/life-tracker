@@ -1,7 +1,9 @@
 /*
  * HP calculations (pure). Rolling 7-day window ending at `now`.
  *
- * Sleep HP = 0.5 × min(avgSleepHours / target, 1) + 0.5 × regularity
+ * Sleep HP = 0.5 × sigmoid(avgSleepHours − 5) + 0.5 × regularity
+ *   sigmoid(x) = 1 / (1 + e^−x): 4h→27%, 5h→50%, 6h→73%, 7h→88%, 8h→95%.
+ *   (Settings.sleepTargetHours only draws the chart's target line.)
  *   A "sleep day" is the day you woke up, with the day boundary at 18:00:
  *   waking before 18:00 counts for that day, after 18:00 for the next day.
  *   So 23:00→07:00, 06:00→09:00 and 03:00→14:00 all belong to the wake-up day,
@@ -25,7 +27,11 @@ export const SLEEP_DAY_BOUNDARY_HOUR = 18;
 /** A still-running session counts live, but at most this long (guards against a forgotten "end" tap). */
 export const ONGOING_EXERCISE_CAP = 4 * HOUR;
 
-type Targets = Pick<Settings, 'sleepTargetHours' | 'sleepStdDevMinutes' | 'exerciseTargetHours'>;
+type Targets = Pick<Settings, 'sleepStdDevMinutes' | 'exerciseTargetHours'>;
+
+/** Hours at which the sleep-duration score is 50%. */
+export const SLEEP_MIDPOINT_HOURS = 5;
+export const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
 const DAY_MIN = 24 * 60;
 
@@ -100,7 +106,7 @@ export function computeSleepHp(segments: Segment[], now: number, t: Targets): Sl
   if (days.length === 0) return { hp: 0, days: 0, avgHours: 0, durationScore: 0 };
 
   const avgHours = days.reduce((a, n) => a + n.minutes, 0) / days.length / 60;
-  const durationScore = Math.min(avgHours / t.sleepTargetHours, 1);
+  const durationScore = sigmoid(avgHours - SLEEP_MIDPOINT_HOURS);
   const { mean, sd } = circularStats(days.map((d) => clockMinutes(d.mainStart)));
   if (days.length < 2) return { hp: durationScore, days: 1, avgHours, durationScore, avgOnset: mean };
 

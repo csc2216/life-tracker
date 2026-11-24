@@ -138,6 +138,18 @@ export async function mergeIntoProject(singleId: string, projectId: string): Pro
   });
 }
 
+/** Reorder a project's sub-tasks to match `taskIds` (unknown ids ignored, missing ones kept at the end). */
+export async function reorderTasks(projectId: string, taskIds: string[]) {
+  await db.transaction('rw', db.cards, async () => {
+    const p = await db.cards.get(projectId);
+    if (!p) return;
+    const byId = new Map(p.tasks.map((t) => [t.id, t]));
+    const ordered = taskIds.map((id) => byId.get(id)).filter((t): t is Task => !!t);
+    const rest = p.tasks.filter((t) => !taskIds.includes(t.id));
+    await db.cards.update(projectId, { tasks: [...ordered, ...rest] });
+  });
+}
+
 export async function deleteCard(id: string) {
   await db.cards.delete(id);
 }

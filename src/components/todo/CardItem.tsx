@@ -10,6 +10,7 @@ interface Props {
   card: Card;
   today: string;
   dropZone?: boolean;
+  sortableTasks?: boolean;
   tasksOverride?: Card['tasks'];
   /** slide out before moving to Done (queue view); filtered view just updates in place */
   animateOut?: boolean;
@@ -24,7 +25,7 @@ interface Props {
  * Project sub-task: check → strike → the task moves to Done on its own;
  * ticking the last one also slides the project out to Done.
  */
-export default function CardItem({ card, today, dropZone, tasksOverride, animateOut = true, onOpen, onCompleted }: Props) {
+export default function CardItem({ card, today, dropZone, sortableTasks, tasksOverride, animateOut = true, onOpen, onCompleted }: Props) {
   const [completing, setCompleting] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [leaving, setLeaving] = useState(false);
@@ -91,6 +92,7 @@ export default function CardItem({ card, today, dropZone, tasksOverride, animate
           pendingTasks={pending}
           tasksOverride={tasksOverride}
           dropZone={dropZone}
+          sortableTasks={sortableTasks}
           onOpen={onOpen}
           onToggleSingle={onToggleSingle}
           onToggleTask={onToggleTask}

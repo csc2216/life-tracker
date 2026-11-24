@@ -33,6 +33,10 @@ interface Props {
 
 const inputCls = 'w-full rounded-xl bg-slate-100 px-3 py-2.5 dark:bg-slate-800';
 
+const DEFAULT_WAKE = '07:00';
+/** Wake-up day for the default sleep session: today, unless today's 07:00 hasn't happened yet. */
+const defaultSleepDate = (now: number) => (combine(dateKey(now), DEFAULT_WAKE) > now ? addDays(dateKey(now), -1) : dateKey(now));
+
 export default function BackfillSheet({ open, initial, onClose, onSaved }: Props) {
   const [mode, setMode] = useState<BackfillMode>('sleep_session');
   const [date, setDate] = useState(dateKey(Date.now()));
@@ -63,9 +67,9 @@ export default function BackfillSheet({ open, initial, onClose, onSaved }: Props
       setExStart(timeKey(now - HOUR));
       setExEnd(timeKey(now));
     } else if (m === 'sleep_session') {
-      setDate(dateKey(now));
+      setDate(defaultSleepDate(now));
       setSleepTime('23:30');
-      setWakeTime('07:00');
+      setWakeTime(DEFAULT_WAKE);
     } else {
       setDate(dateKey(ts));
     }
@@ -81,7 +85,7 @@ export default function BackfillSheet({ open, initial, onClose, onSaved }: Props
       setExStart(timeKey(now - HOUR));
       setExEnd(timeKey(now));
     } else if (m === 'sleep_session') {
-      setDate(dateKey(now));
+      setDate(defaultSleepDate(now));
     }
   };
 

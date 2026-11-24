@@ -31,7 +31,7 @@ export default function HpPanel({ pairing, now }: { pairing: PairingResult; now:
   const sleepSummary =
     sleep.days === 0
       ? '過去 7 天沒有睡眠紀錄'
-      : `平均 ${sleep.avgHours.toFixed(1)}h · 規律 ${sleep.regularity === undefined ? '資料不足' : pct(sleep.regularity)}`;
+      : `平均 ${sleep.avgHours.toFixed(1)}h · 入睡 ${sleep.sdMinutes === undefined ? '資料不足' : `±${Math.round(sleep.sdMinutes)} 分`}`;
   const toggle = (k: 'sleep' | 'exercise') => setOpen((o) => (o === k ? null : k));
 
   return (
@@ -47,7 +47,7 @@ export default function HpPanel({ pairing, now }: { pairing: PairingResult; now:
         />
         <div className="mt-4 space-y-1">
           <Row k="有紀錄的天數" v={`${sleep.days} / 7`} />
-          <Row k={`時數分數（平均 ÷ ${s.sleepTargetHours}h）`} v={pct(sleep.durationScore)} />
+          <Row k="時數分數 sigmoid(平均 − 5)" v={pct(sleep.durationScore)} />
           <Row k="主睡眠平均入睡" v={sleep.avgOnset === undefined ? '—' : formatOnset(sleep.avgOnset)} />
           <Row
             k={`規律分數（標準差 ÷ ${s.sleepStdDevMinutes} 分）`}

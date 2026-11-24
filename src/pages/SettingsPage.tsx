@@ -153,6 +153,7 @@ export default function SettingsPage() {
       <Section title="HP 目標值">
         <NumberSetting
           label="每晚睡眠目標"
+          hint="細節圖的目標線，不影響 HP"
           unit="小時"
           step={0.5}
           value={settings.sleepTargetHours}

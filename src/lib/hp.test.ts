@@ -7,6 +7,7 @@ import {
   dailySleep,
   formatHours,
   hpLevel,
+  sigmoid,
   sleepDayKey,
 } from './hp';
 import type { Segment } from './pairing';
@@ -57,9 +58,20 @@ describe('computeSleepHp', () => {
     expect(computeSleepHp([], NOW, T).hp).toBe(0);
   });
 
-  it('is 100% for 7.5h every night at the same time', () => {
+  it('duration score is sigmoid(hours − 5)', () => {
+    const score = (h: number) => computeSleepHp([sleep(at(24, 1), h)], NOW, T).durationScore;
+    expect(score(4)).toBeCloseTo(0.269, 3);
+    expect(score(5)).toBeCloseTo(0.5, 5);
+    expect(score(6)).toBeCloseTo(0.731, 3);
+    expect(score(7)).toBeCloseTo(0.881, 3);
+    expect(score(8)).toBeCloseTo(0.953, 3);
+  });
+
+  it('7.5h every night at the same time: 0.5·sigmoid(2.5) + 0.5', () => {
     const segs = [17, 18, 19, 20, 21, 22, 23].map((d) => sleep(at(d, 23), 7.5));
-    expect(computeSleepHp(segs, NOW, T).hp).toBeCloseTo(1);
+    const r = computeSleepHp(segs, NOW, T);
+    expect(r.regularity).toBeCloseTo(1);
+    expect(r.hp).toBeCloseTo(0.5 * sigmoid(2.5) + 0.5, 6);
   });
 
   it('a consistently late schedule (03:00→10:30) is still fully regular', () => {
@@ -67,7 +79,7 @@ describe('computeSleepHp', () => {
     const r = computeSleepHp(segs, NOW, T);
     expect(r.days).toBe(7);
     expect(r.regularity).toBeCloseTo(1);
-    expect(r.hp).toBeCloseTo(1);
+    expect(r.hp).toBeCloseTo(0.5 * sigmoid(2.5) + 0.5, 6);
   });
 
   it('23:00 vs 01:00 onsets are 1 h SD, not 11 h', () => {
@@ -80,10 +92,10 @@ describe('computeSleepHp', () => {
     expect(computeSleepHp(segs, NOW, T).regularity).toBe(0);
   });
 
-  it('uses only duration with a single sleep day and caps it', () => {
+  it('uses only the duration score with a single sleep day', () => {
     const r = computeSleepHp([sleep(at(24, 3), 11)], NOW, T);
     expect(r.regularity).toBeUndefined();
-    expect(r.hp).toBe(1);
+    expect(r.hp).toBeCloseTo(sigmoid(6), 6);
   });
 
   it('ignores sleeps outside the 7-day window', () => {

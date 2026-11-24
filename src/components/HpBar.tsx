@@ -38,11 +38,8 @@ export default function HpBar({ icon, label, value, summary, expanded, onToggle,
   return (
     <div className="ui-card rounded-2xl bg-white shadow-sm dark:bg-slate-900">
       <button onClick={onToggle} aria-expanded={expanded} className="block w-full px-4 pt-3 pb-3 text-left">
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="font-semibold">
-            {icon} {label}
-          </span>
-          <span className="font-mono text-lg font-bold tabular-nums">{pct}%</span>
+        <div className="mb-1.5 font-semibold">
+          {icon} {label}
         </div>
         <motion.div
           animate={shake}
