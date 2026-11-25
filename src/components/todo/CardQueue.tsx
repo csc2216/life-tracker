@@ -81,11 +81,24 @@ export default function CardQueue({ cards, today, onOpen, onCompleted, onMerged,
   const [activeId, setActiveId] = useState<string | null>(null);
   // optimistic order so the list doesn't jump back for a frame after dropping
   const [optimistic, setOptimistic] = useState<string[] | null>(null);
-  useEffect(() => setOptimistic(null), [cards]);
+  // same for a project's sub-tasks
+  const [optimisticTasks, setOptimisticTasks] = useState<{ projectId: string; ids: string[] } | null>(null);
+  useEffect(() => {
+    setOptimistic(null);
+    setOptimisticTasks(null);
+  }, [cards]);
 
   const byId = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ids = optimistic ?? cards.map((c) => c.id);
-  const ordered = ids.map((id) => byId.get(id)).filter((c): c is Card => !!c);
+  const ordered = ids
+    .map((id) => byId.get(id))
+    .filter((c): c is Card => !!c)
+    .map((c) => {
+      if (optimisticTasks?.projectId !== c.id) return c;
+      const pos = new Map(optimisticTasks.ids.map((id, i) => [id, i]));
+      const tasks = [...c.tasks].sort((a, b) => (pos.get(a.id) ?? Infinity) - (pos.get(b.id) ?? Infinity));
+      return { ...c, tasks };
+    });
   const active = activeId ? byId.get(activeId) : undefined;
   const [activeTask, setActiveTask] = useState<{ task: Card['tasks'][number] } | null>(null);
 
@@ -114,7 +127,9 @@ export default function CardQueue({ cards, today, onOpen, onCompleted, onMerged,
       const from = ids.indexOf(d.task.id);
       const to = ids.indexOf(over.task.id);
       if (from < 0 || to < 0) return;
-      await reorderTasks(project.id, arrayMove(ids, from, to));
+      const next = arrayMove(ids, from, to);
+      setOptimisticTasks({ projectId: project.id, ids: next });
+      await reorderTasks(project.id, next);
       return;
     }
     if (overId.startsWith('into:')) {
